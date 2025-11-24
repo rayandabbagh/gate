@@ -1,0 +1,44 @@
+# Gate Configuration Example
+
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+
+# Agent Configuration
+agents:
+  regression:
+    enabled: true
+    max_files_to_analyze: 100
+    
+  test_generation:
+    enabled: true
+    supported_languages: ["python", "javascript", "typescript", "go", "java"]
+    
+  e2e_simulation:
+    enabled: true
+    timeout_seconds: 300
+    max_flows: 10
+    
+  shadow_comparison:
+    enabled: true
+    comparison_timeout: 60
+    max_endpoints: 50
+
+# Repository Analysis
+repository:
+  ignore_patterns:
+    - "node_modules/**"
+    - ".git/**"
+    - "__pycache__/**"
+    - "*.pyc"
+    - ".venv/**"
+    - "venv/**"
+
+# Debug Bundle
+debug_bundle:
+  include_code_snippets: true
+  include_full_diffs: false
+  max_bundle_size_mb: 10
+

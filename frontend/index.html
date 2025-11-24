@@ -453,55 +453,28 @@
         }
         
         .agent-info-icon {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
             background: var(--primary);
             color: white;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 700;
-            cursor: help;
-            transition: all 0.2s;
-            flex-shrink: 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-left: 0.5rem;
+            line-height: 1;
             font-style: normal;
+            flex-shrink: 0;
         }
         
         .agent-info-icon:hover {
             background: var(--primary-dark);
-            transform: scale(1.1);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-        
-        .agent-info-tooltip {
-            position: fixed;
-            background: white;
-            border: 2px solid var(--primary);
-            border-radius: 8px;
-            padding: 1.25rem;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            max-width: 450px;
-            z-index: 1000;
-            font-size: 0.8125rem;
-            color: var(--gray-700);
-            line-height: 1.6;
-            display: none;
-            pointer-events: auto;
-        }
-        
-        .agent-info-tooltip.show {
-            display: block;
-        }
-        
-        .agent-info-tooltip strong {
-            color: var(--primary);
-            font-weight: 700;
-            display: block;
-            margin-bottom: 0.75rem;
-            font-size: 0.9375rem;
-            letter-spacing: -0.2px;
+            transform: scale(1.15);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
         }
 
         .agent-status {
@@ -1056,8 +1029,16 @@
         <div id="errorSection" class="error-alert"></div>
     </div>
     
-    <!-- Agent Info Tooltip -->
-    <div id="agentInfoTooltip" class="agent-info-tooltip"></div>
+    <!-- Agent Info Modal -->
+    <div id="agentInfoModalOverlay" class="agent-info-modal-overlay" onclick="hideAgentInfo()">
+        <div class="agent-info-modal" onclick="event.stopPropagation()">
+            <div class="agent-info-modal-header">
+                <h3 id="agentInfoModalTitle"></h3>
+                <button class="agent-info-modal-close" onclick="hideAgentInfo()" aria-label="Close">×</button>
+            </div>
+            <div class="agent-info-modal-body" id="agentInfoModalBody"></div>
+        </div>
+    </div>
 
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-card">
@@ -1834,33 +1815,85 @@
         }
 
         function showAgentInfo(agentName, description) {
-            const tooltip = document.getElementById('agentInfoTooltip');
-            // Convert newlines to HTML breaks for display
-            const formattedDescription = description.replace(/\n/g, '<br>');
-            tooltip.innerHTML = `
-                <strong style="font-size: 0.9375rem; margin-bottom: 0.75rem; display: block;">${agentName}</strong>
-                <div style="white-space: pre-wrap; line-height: 1.6;">${formattedDescription}</div>
-            `;
-            tooltip.classList.add('show');
+            const overlay = document.getElementById('agentInfoModalOverlay');
+            const title = document.getElementById('agentInfoModalTitle');
+            const body = document.getElementById('agentInfoModalBody');
             
-            // Position tooltip near mouse
-            let positionTooltip = (e) => {
-                const tooltipEl = document.getElementById('agentInfoTooltip');
-                tooltipEl.style.left = Math.min(e.clientX + 10, window.innerWidth - 420) + 'px';
-                tooltipEl.style.top = Math.min(e.clientY + 10, window.innerHeight - 300) + 'px';
+            // Set title
+            title.textContent = agentName;
+            
+            // Format description - split by double newlines for sections
+            let htmlContent = '';
+            const sections = description.split(/\n\n+/).filter(s => s.trim());
+            
+            sections.forEach(section => {
+                section = section.trim();
+                if (!section) return;
+                
+                // Check if this is a section header (ends with : or contains "HOW IT CATCHES BUGS" or "APPROACH")
+                if (section.includes('HOW IT CATCHES BUGS:') || section.includes('APPROACH:')) {
+                    const [header, ...content] = section.split(':');
+                    const contentText = content.join(':').trim();
+                    
+                    htmlContent += `<p><strong style="color: var(--primary); font-size: 1rem; margin-bottom: 0.5rem; display: block;">${header}:</strong></p>`;
+                    
+                    // Check if content has bullet points
+                    if (contentText.includes('\n- ')) {
+                        const lines = contentText.split('\n');
+                        htmlContent += '<ul style="margin-left: 1.5rem; margin-bottom: 1rem;">';
+                        lines.forEach(line => {
+                            line = line.trim();
+                            if (line.startsWith('- ')) {
+                                htmlContent += `<li style="margin-bottom: 0.5rem;">${line.substring(2)}</li>`;
+                            } else if (line) {
+                                htmlContent += `<li style="margin-bottom: 0.5rem;">${line}</li>`;
+                            }
+                        });
+                        htmlContent += '</ul>';
+                    } else {
+                        htmlContent += `<p style="margin-bottom: 1rem;">${contentText.replace(/\n/g, '<br>')}</p>`;
+                    }
+                } else if (section.includes('\n- ')) {
+                    // Regular bullet list
+                    const lines = section.split('\n');
+                    htmlContent += '<ul style="margin-left: 1.5rem; margin-bottom: 1rem;">';
+                    lines.forEach(line => {
+                        line = line.trim();
+                        if (line.startsWith('- ')) {
+                            htmlContent += `<li style="margin-bottom: 0.5rem;">${line.substring(2)}</li>`;
+                        } else if (line) {
+                            htmlContent += `<li style="margin-bottom: 0.5rem;">${line}</li>`;
+                        }
+                    });
+                    htmlContent += '</ul>';
+                } else {
+                    // Regular paragraph
+                    htmlContent += `<p style="margin-bottom: 1rem;">${section.replace(/\n/g, '<br>')}</p>`;
+                }
+            });
+            
+            body.innerHTML = htmlContent || `<p>${description.replace(/\n/g, '<br>')}</p>`;
+            
+            // Show modal
+            overlay.classList.add('show');
+            
+            // Prevent body scroll when modal is open
+            document.body.style.overflow = 'hidden';
+            
+            // Close on Escape key
+            const escapeHandler = (e) => {
+                if (e.key === 'Escape') {
+                    hideAgentInfo();
+                    document.removeEventListener('keydown', escapeHandler);
+                }
             };
-            
-            document.addEventListener('mousemove', positionTooltip);
-            document.addEventListener('click', () => {
-                hideAgentInfo();
-                document.removeEventListener('mousemove', positionTooltip);
-            }, { once: true });
+            document.addEventListener('keydown', escapeHandler);
         }
         
         function hideAgentInfo() {
-            const tooltip = document.getElementById('agentInfoTooltip');
-            tooltip.classList.remove('show');
-            document.removeEventListener('mousemove', positionTooltip);
+            const overlay = document.getElementById('agentInfoModalOverlay');
+            overlay.classList.remove('show');
+            document.body.style.overflow = '';
         }
         
         function showError(message) {

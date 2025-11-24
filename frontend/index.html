@@ -477,6 +477,115 @@
             box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
         }
 
+        /* Modal Overlay - centered popup */
+        .agent-info-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            animation: fadeIn 0.2s ease;
+        }
+        
+        .agent-info-modal-overlay.show {
+            display: flex;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        .agent-info-modal {
+            background: white;
+            border-radius: 12px;
+            padding: 0;
+            box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.3), 0 10px 20px -5px rgba(0, 0, 0, 0.15);
+            max-width: 500px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s ease;
+            overflow: hidden;
+            position: relative;
+            margin: auto;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .agent-info-modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+        }
+        
+        .agent-info-modal-header h3 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: -0.2px;
+        }
+        
+        .agent-info-modal-close {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            line-height: 1;
+            padding: 0;
+        }
+        
+        .agent-info-modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        
+        .agent-info-modal-body {
+            padding: 1.5rem;
+            font-size: 0.875rem;
+            color: var(--gray-700);
+            line-height: 1.6;
+        }
+        
+        .agent-info-modal-body p {
+            margin: 0;
+            line-height: 1.6;
+        }
+
         .agent-status {
             display: inline-flex;
             align-items: center;
@@ -1459,12 +1568,12 @@
                     ? 'ANALYZING'
                     : agent.status.toUpperCase();
                 
-                // Agent descriptions for info tooltips - detailed explanation of what each tests for
+                // Agent descriptions for info popups - short 2-line explanations
                 const agentDescriptions = {
-                    'Regression Agent': 'HOW IT CATCHES BUGS: Reads the commit diff, understands changes in full codebase context, then detects:\n\n- Risky logic changes that could break existing functionality\n- Missing error handling or guards that could cause crashes\n- Side effects on other parts of the system\n- Dependency drift that could break integrations\n- Patterns that senior engineers recognize as "This will break in production"\n\nAPPROACH: Analyzes each changed file against entire codebase structure, relationships, and dependencies to predict production failures.',
-                    'Test Generation Agent': 'HOW IT CATCHES BUGS: For each changed code path in the commit:\n\n- Autonomously generates unit/integration tests for the exact changes\n- ACTUALLY EXECUTES the generated tests\n- If tests fail → flags as potential production bug\n- Identifies missing test coverage that should exist\n- Catches logic errors, edge cases, and integration issues\n\nAPPROACH: Creates and runs real tests to proof-check the commit changes before production. Test failures = production bugs caught early.',
-                    'E2E Simulation Agent': 'HOW IT CATCHES BUGS: Simulates real user workflows:\n\n- Actually clicks buttons, fills forms, navigates pages (using browser automation)\n- Executes API calls and verifies responses\n- Tests complete user journeys (signup, checkout, etc.)\n- Catches breakages only visible when system is fully assembled\n- Identifies UI/UX failures, broken flows, API contract violations\n\nAPPROACH: Uses Playwright browser automation to execute real user interactions. If a flow fails, it\'s a production bug users will encounter.',
-                    'Shadow Comparison Agent': 'HOW IT CATCHES BUGS: Runs actual shadow traffic:\n\n- Starts two versions: current commit vs. last good version (parent commit)\n- Sends same requests to both versions simultaneously\n- Compares: response status codes, latency, response body schemas, error rates\n- Flags any behavioral differences as potential breaking changes\n- Detects silent functional changes, performance regressions, schema drift\n\nAPPROACH: Real traffic comparison between versions. If behavior changed, it could break production integrations or user expectations.'
+                    'Regression Agent': 'Analyzes commit diffs in full codebase context to detect risky logic changes, missing error handling, and dependency issues that could break production.\n\nUses LLM intelligence to understand code relationships and predict failures before they reach users.',
+                    'Test Generation Agent': 'Autonomously generates and executes unit/integration tests for each changed code path in the commit.\n\nTest failures are flagged as potential production bugs, ensuring code changes are thoroughly proof-tested before deployment.',
+                    'E2E Simulation Agent': 'Simulates real user workflows using browser automation - clicks buttons, fills forms, navigates pages, and tests complete user journeys.\n\nCatches breakages that only appear when the system is fully assembled, identifying UI/UX failures and broken flows.',
+                    'Shadow Comparison Agent': 'Runs actual shadow traffic by comparing the current commit against the last good version side-by-side.\n\nDetects behavioral differences in responses, latency, schemas, and error rates that could break production integrations.'
                 };
                 
                 const agentDescription = agentDescriptions[name] || '';
@@ -1822,59 +1931,19 @@
             // Set title
             title.textContent = agentName;
             
-            // Format description - split by double newlines for sections
+            // Simple 2-line format - split by double newline
+            const lines = description.split(/\n\n+/).filter(s => s.trim());
             let htmlContent = '';
-            const sections = description.split(/\n\n+/).filter(s => s.trim());
             
-            sections.forEach(section => {
-                section = section.trim();
-                if (!section) return;
-                
-                // Check if this is a section header (ends with : or contains "HOW IT CATCHES BUGS" or "APPROACH")
-                if (section.includes('HOW IT CATCHES BUGS:') || section.includes('APPROACH:')) {
-                    const [header, ...content] = section.split(':');
-                    const contentText = content.join(':').trim();
-                    
-                    htmlContent += `<p><strong style="color: var(--primary); font-size: 1rem; margin-bottom: 0.5rem; display: block;">${header}:</strong></p>`;
-                    
-                    // Check if content has bullet points
-                    if (contentText.includes('\n- ')) {
-                        const lines = contentText.split('\n');
-                        htmlContent += '<ul style="margin-left: 1.5rem; margin-bottom: 1rem;">';
-                        lines.forEach(line => {
-                            line = line.trim();
-                            if (line.startsWith('- ')) {
-                                htmlContent += `<li style="margin-bottom: 0.5rem;">${line.substring(2)}</li>`;
-                            } else if (line) {
-                                htmlContent += `<li style="margin-bottom: 0.5rem;">${line}</li>`;
-                            }
-                        });
-                        htmlContent += '</ul>';
-                    } else {
-                        htmlContent += `<p style="margin-bottom: 1rem;">${contentText.replace(/\n/g, '<br>')}</p>`;
-                    }
-                } else if (section.includes('\n- ')) {
-                    // Regular bullet list
-                    const lines = section.split('\n');
-                    htmlContent += '<ul style="margin-left: 1.5rem; margin-bottom: 1rem;">';
-                    lines.forEach(line => {
-                        line = line.trim();
-                        if (line.startsWith('- ')) {
-                            htmlContent += `<li style="margin-bottom: 0.5rem;">${line.substring(2)}</li>`;
-                        } else if (line) {
-                            htmlContent += `<li style="margin-bottom: 0.5rem;">${line}</li>`;
-                        }
-                    });
-                    htmlContent += '</ul>';
-                } else {
-                    // Regular paragraph
-                    htmlContent += `<p style="margin-bottom: 1rem;">${section.replace(/\n/g, '<br>')}</p>`;
+            lines.forEach((line, index) => {
+                if (line.trim()) {
+                    htmlContent += `<p style="margin-bottom: ${index < lines.length - 1 ? '0.75rem' : '0'}; line-height: 1.6;">${line.trim()}</p>`;
                 }
             });
             
-            body.innerHTML = htmlContent || `<p>${description.replace(/\n/g, '<br>')}</p>`;
+            body.innerHTML = htmlContent || `<p>${description}</p>`;
             
-            // Show modal
+            // Show modal - ensure it's centered
             overlay.classList.add('show');
             
             // Prevent body scroll when modal is open

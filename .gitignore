@@ -43,3 +43,9 @@ Thumbs.db
 analysis_*.json
 debug_bundles/
 
+# Environment files - NEVER commit API keys!
+.env
+.env.*
+*.env
+backend/.env
+
